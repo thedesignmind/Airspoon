@@ -1,0 +1,50 @@
+{
+  "app": {
+    "title": "Airspoon",
+    "tagline": "Discover restaurants near you",
+    "description": "Find the best restaurants matching your dietary preferences"
+  },
+  "filters": {
+    "title": "Dietary Preferences",
+    "vegan": "Vegan",
+    "vegetarian": "Vegetarian",
+    "glutenFree": "Gluten-Free",
+    "all": "All",
+    "active": "{count} filter active",
+    "active_plural": "{count} filters active"
+  },
+  "location": {
+    "requesting": "Allow Location Access",
+    "description": "Airspoon uses your location to find nearby restaurants. Click below to enable location access.",
+    "allow": "Allow Location",
+    "skip": "Use Default Location",
+    "defaultLocation": "Showing restaurants near Waltham, MA",
+    "usingLocation": "Using your current location",
+    "error": "Could not get your location. Showing restaurants near Waltham, MA."
+  },
+  "restaurants": {
+    "nearby": "Nearby Restaurants",
+    "distance": "{distance} away",
+    "directions": "Get Directions",
+    "matchCount": "{count} option",
+    "matchCount_plural": "{count} options",
+    "totalItems": "{count} menu item",
+    "totalItems_plural": "{count} menu items",
+    "loading": "Finding restaurants near you...",
+    "noResults": "No restaurants found",
+    "noResultsDescription": "Try adjusting your filters or expanding your search radius.",
+    "showMenu": "Show menu items",
+    "hideMenu": "Hide menu items",
+    "priceRange": "Price range",
+    "cuisine": "Cuisine"
+  },
+  "menu": {
+    "loading": "Loading menu...",
+    "noItems": "No matching menu items",
+    "price": "${price}"
+  },
+  "errors": {
+    "general": "Something went wrong. Please try again.",
+    "loadingRestaurants": "Failed to load restaurants. Please check your connection."
+  }
+}
