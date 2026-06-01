@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { haversineDistance } from '@/lib/distance';
 import { Restaurant } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 const DEFAULT_LAT = 42.3765;
 const DEFAULT_LNG = -71.2356;
 const DEFAULT_RADIUS_KM = 25;
