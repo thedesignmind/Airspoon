@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { supabase } = await import('@/lib/supabase');
+
     const { id } = params;
     const { searchParams } = new URL(request.url);
     const filters = searchParams.get('filters')?.split(',').filter(Boolean) ?? [];
@@ -37,9 +38,9 @@ export async function GET(
       .eq('restaurant_id', id);
 
     if (error) {
-      console.error('Supabase error fetching menu items:', error);
+      console.error('Supabase error fetching menu items:', error.message);
       return NextResponse.json(
-        { error: 'Failed to fetch menu items' },
+        { error: 'Failed to fetch menu items', detail: error.message },
         { status: 500 }
       );
     }
@@ -59,10 +60,8 @@ export async function GET(
 
     return NextResponse.json({ menu_items: filteredItems });
   } catch (err) {
-    console.error('Unexpected error in /api/restaurants/[id]/menu:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    console.error('Error in /api/restaurants/[id]/menu:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

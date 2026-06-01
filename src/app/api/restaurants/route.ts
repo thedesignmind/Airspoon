@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 import { haversineDistance } from '@/lib/distance';
 import { Restaurant } from '@/lib/types';
 
-// Default location: Waltham, MA
 const DEFAULT_LAT = 42.3765;
 const DEFAULT_LNG = -71.2356;
 const DEFAULT_RADIUS_KM = 25;
 
+interface RawMenuItem {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  description: string | null;
+  price: number | null;
+  image_url: string | null;
+  dietary_tags: { id: string; tag: string }[];
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Import lazily so missing env vars throw inside the try/catch
+    const { supabase } = await import('@/lib/supabase');
+
     const { searchParams } = new URL(request.url);
     const lat = parseFloat(searchParams.get('lat') ?? String(DEFAULT_LAT));
     const lng = parseFloat(searchParams.get('lng') ?? String(DEFAULT_LNG));
@@ -23,7 +34,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all restaurants
     const { data: restaurants, error: restaurantsError } = await supabase
       .from('restaurants')
       .select('*');
@@ -31,7 +41,7 @@ export async function GET(request: NextRequest) {
     if (restaurantsError) {
       console.error('Supabase error fetching restaurants:', restaurantsError);
       return NextResponse.json(
-        { error: 'Failed to fetch restaurants' },
+        { error: 'Failed to fetch restaurants', detail: restaurantsError.message },
         { status: 500 }
       );
     }
@@ -40,7 +50,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ restaurants: [] });
     }
 
-    // Fetch all menu items with their dietary tags
     const { data: menuItems, error: menuError } = await supabase
       .from('menu_items')
       .select(`
@@ -57,23 +66,20 @@ export async function GET(request: NextRequest) {
       `);
 
     if (menuError) {
-      console.error('Supabase error fetching menu items:', menuError);
-      // Continue without menu data rather than failing entirely
+      console.error('Supabase error fetching menu items:', menuError.message);
+      // Non-fatal — continue with zero menu counts
     }
 
-    // Build a map of restaurant_id -> menu items
-    const menuByRestaurant: Record<string, typeof menuItems> = {};
-    if (menuItems) {
-      for (const item of menuItems) {
-        if (!menuByRestaurant[item.restaurant_id]) {
-          menuByRestaurant[item.restaurant_id] = [];
-        }
-        menuByRestaurant[item.restaurant_id]!.push(item);
+    const menuByRestaurant: Record<string, RawMenuItem[]> = {};
+    for (const item of (menuItems ?? []) as RawMenuItem[]) {
+      if (!menuByRestaurant[item.restaurant_id]) {
+        menuByRestaurant[item.restaurant_id] = [];
       }
+      menuByRestaurant[item.restaurant_id].push(item);
     }
 
-    // Calculate distances and filter by radius
     const restaurantsWithDistance = (restaurants as Restaurant[])
+      .filter((r) => typeof r.latitude === 'number' && typeof r.longitude === 'number')
       .map((restaurant) => {
         const distance_km = haversineDistance(
           lat,
@@ -84,18 +90,14 @@ export async function GET(request: NextRequest) {
 
         const items = menuByRestaurant[restaurant.id] ?? [];
 
-        // Calculate match count based on filters
-        let match_count: number;
-        if (filters.length === 0) {
-          match_count = items.length;
-        } else {
-          match_count = items.filter((item) => {
-            const tags = (item.dietary_tags as { tag: string }[] | null) ?? [];
-            return filters.every((filter) =>
-              tags.some((t) => t.tag === filter)
-            );
-          }).length;
-        }
+        const match_count =
+          filters.length === 0
+            ? items.length
+            : items.filter((item) =>
+                filters.every((filter) =>
+                  item.dietary_tags.some((t) => t.tag === filter)
+                )
+              ).length;
 
         return {
           ...restaurant,
@@ -104,16 +106,13 @@ export async function GET(request: NextRequest) {
         };
       })
       .filter((r) => r.distance_km <= radius)
-      // If filters active, hide restaurants with 0 matches
       .filter((r) => filters.length === 0 || r.match_count > 0)
       .sort((a, b) => a.distance_km - b.distance_km);
 
     return NextResponse.json({ restaurants: restaurantsWithDistance });
   } catch (err) {
-    console.error('Unexpected error in /api/restaurants:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    console.error('Error in /api/restaurants:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
